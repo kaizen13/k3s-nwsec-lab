@@ -98,7 +98,8 @@ Internet → Istio IngressGateway (LoadBalancer 172.20.20.21)
 | `frontend` | React/HTML app (nginx) | Yes |
 | `backend` | FastAPI Todo API | Yes |
 | `data` | PostgreSQL StatefulSet | Yes |
-| `monitoring` | Prometheus, Grafana, Kiali, Jaeger | No |
+| `monitoring` | Prometheus, Grafana, Kiali | No |
+| `observability` | Jaeger (via jaeger-operator v1.51.0) | No |
 | `cert-manager` | Certificate lifecycle | No |
 | `metallb-system` | Bare-metal LoadBalancer | No |
 
@@ -139,6 +140,8 @@ Internet → Istio IngressGateway (LoadBalancer 172.20.20.21)
 
 - **Istio sidecar not injecting**: Check namespace has `istio-injection=enabled` label, then restart pods
 - **Jaeger shows no traces**: Restart app pods after Jaeger is deployed; generate traffic with `traffic-gen.sh`
+- **Jaeger operator not reconciling**: It uses leader election — if a stale lease exists from a previous pod, delete it: `kubectl delete lease 31e04290.jaegertracing.io -n observability`
+- **Jaeger namespace**: jaeger-operator v1.51.0 hardcodes `observability` namespace; deploying to any other namespace causes resource conflicts. Jaeger CR must also be in `observability`.
 - **Grafana missing Istio metrics**: Apply `monitoring/prometheus/istio-scrape-targets.yaml`
 - **Pods OOMKilled**: Scale down replicas — this is a single node with 24GB RAM shared across everything
 - **Coraza WasmPlugin not blocking**: Verify the plugin loaded with `kubectl get wasmplugin -n istio-system`; check IngressGateway logs for WASM errors

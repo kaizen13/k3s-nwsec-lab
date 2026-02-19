@@ -158,15 +158,18 @@ helm upgrade --install kiali-server kiali/kiali-server \
 log "Kiali: http://172.20.20.24:20001"
 
 log "--- Jaeger (distributed tracing) ---"
-kubectl create -f https://github.com/jaegertracing/jaeger-operator/releases/download/v1.51.0/jaeger-operator.yaml \
-  -n monitoring 2>/dev/null || true
-sleep 15
+# NOTE: jaeger-operator v1.51.0 hardcodes the 'observability' namespace internally;
+# applying with -n <other-namespace> causes resource conflicts. Use its own namespace.
+kubectl create namespace observability --dry-run=client -o yaml | kubectl apply -f -
+kubectl apply -f https://github.com/jaegertracing/jaeger-operator/releases/download/v1.51.0/jaeger-operator.yaml \
+  -n observability 2>/dev/null || true
+kubectl wait --namespace observability --for=condition=ready pod \
+  --selector=app.kubernetes.io/name=jaeger-operator --timeout=90s
 kubectl apply -f "$REPO_DIR/monitoring/jaeger/jaeger.yaml"
-sleep 10
-kubectl patch svc jaeger-query -n monitoring \
-  -p '{"spec":{"type":"LoadBalancer"}}' 2>/dev/null || true
-kubectl annotate svc jaeger-query -n monitoring \
-  metallb.universe.tf/loadBalancerIPs=172.20.20.25 --overwrite 2>/dev/null || true
+sleep 15
+kubectl patch svc jaeger-query -n observability \
+  -p '{"spec":{"type":"LoadBalancer"},"metadata":{"annotations":{"metallb.universe.tf/loadBalancerIPs":"172.20.20.25"}}}' \
+  2>/dev/null || true
 log "Jaeger: http://172.20.20.25:16686"
 
 # ── DONE ─────────────────────────────────────────────────────────────────────

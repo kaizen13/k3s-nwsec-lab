@@ -22,7 +22,9 @@ remove_app() {
 remove_monitoring() {
   echo "Removing monitoring stack..."
   helm uninstall kiali-server -n monitoring 2>/dev/null || true
-  kubectl delete -f https://github.com/jaegertracing/jaeger-operator/releases/download/v1.51.0/jaeger-operator.yaml -n monitoring 2>/dev/null || true
+  kubectl delete jaeger jaeger -n observability 2>/dev/null || true
+  kubectl delete -f https://github.com/jaegertracing/jaeger-operator/releases/download/v1.51.0/jaeger-operator.yaml -n observability 2>/dev/null || true
+  kubectl delete namespace observability --ignore-not-found
   helm uninstall prometheus -n monitoring 2>/dev/null || true
   kubectl delete namespace monitoring --ignore-not-found
   echo "Monitoring removed."

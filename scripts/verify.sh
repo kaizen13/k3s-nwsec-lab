@@ -2,17 +2,18 @@
 # =============================================================================
 # K8s Security Lab - Post-Install Verification
 # =============================================================================
-export KUBECONFIG=~/.kube/config
+export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 
 PASS=0; FAIL=0
 ok()  { echo "  ✔ $*"; PASS=$((PASS+1)); }
-fail(){ echo "  ✘ $*"; ((FAIL++)); }
+fail(){ echo "  ✘ $*"; FAIL=$((FAIL+1)); }
 hdr() { echo ""; echo "── $* ──────────────────────────────────"; }
 
 hdr "LoadBalancer IPs (MetalLB)"
 for svc_check in "istio-system/istio-ingressgateway:172.20.20.21" \
                   "monitoring/prometheus-grafana:172.20.20.23" \
-                  "monitoring/kiali:172.20.20.24"; do
+                  "monitoring/kiali:172.20.20.24" \
+                  "observability/jaeger-query:172.20.20.25"; do
   ns="${svc_check%%/*}"; rest="${svc_check#*/}"
   svc="${rest%%:*}"; expected="${rest#*:}"
   ip=$(kubectl get svc "$svc" -n "$ns" -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null)

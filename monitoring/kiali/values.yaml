@@ -15,7 +15,7 @@ external_services:
     in_cluster_url: http://prometheus-grafana.monitoring:80
   tracing:
     enabled: true
-    in_cluster_url: http://jaeger-query.monitoring:16686
+    in_cluster_url: http://jaeger-query.observability:16686
     use_grpc: false
 
 server:
