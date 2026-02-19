@@ -1,0 +1,62 @@
+# =============================================================================
+# Kubernetes Network Security Lab — .gitignore
+# =============================================================================
+
+# --- Installation artifacts ---
+# Istio is downloaded and extracted in-place by install.sh
+istio-*/
+nerdctl*.tar.gz
+
+# Install log (written to $HOME but guarded in case run from repo root)
+install.log
+
+# Image tarballs produced by buildah export path
+*.tar
+*.tar.gz
+
+# --- Cluster credentials & kubeconfig ---
+kubeconfig
+kubeconfig.yaml
+k3s.yaml
+.kube/
+
+# --- TLS / PKI material ---
+*.key
+*.pem
+*.crt
+*.csr
+*.p12
+*.pfx
+
+# --- Exported Kubernetes secrets ---
+# Prevent accidental commits of `kubectl get secret -o yaml` dumps
+*-secret.yaml
+*-secret-export.yaml
+secret-*.yaml
+secrets.yaml
+
+# --- Local value overrides ---
+# Helm values files with local customisations (IPs, passwords, hostnames)
+values.local.yaml
+values.override.yaml
+values.*.local.yaml
+
+# --- Backup dumps (from TROUBLESHOOTING.md emergency backup procedure) ---
+k8s-backups/
+
+# --- Python (FastAPI backend) ---
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+
+# --- Editor & OS artifacts ---
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.iml
