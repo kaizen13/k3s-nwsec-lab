@@ -27,7 +27,8 @@ spec:
       - name: istio-ingressgateway
         enabled: true
         k8s:
-          # LoadBalancer: IngressGateway is now the external entry point (Coraza WAF via WasmPlugin)
+          # LoadBalancer: IngressGateway is the external entry point (Coraza WAF via WasmPlugin)
+          # CHANGEME: use a free IP from your MetalLB pool (infrastructure/metallb/ip-pool.yaml)
           serviceAnnotations:
             metallb.universe.tf/loadBalancerIPs: 172.20.20.21
           service:

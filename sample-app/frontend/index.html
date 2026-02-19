@@ -47,6 +47,7 @@
   <div class="container">
     <div class="arch-info">
       <strong>Traffic Path:</strong> Your Browser → NGINX (WAF) → Istio Gateway (mTLS) → Frontend → Backend → PostgreSQL
+      <!-- CHANGEME: update the IP below if you adapted the MetalLB subnet -->
       <div class="flow">172.20.20.21 → ClusterIP → frontend ns → backend ns → data ns</div>
     </div>
 

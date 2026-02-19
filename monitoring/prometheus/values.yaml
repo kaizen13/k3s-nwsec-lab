@@ -19,7 +19,7 @@ grafana:
   service:
     type: LoadBalancer
     annotations:
-      metallb.universe.tf/loadBalancerIPs: 172.20.20.23
+      metallb.universe.tf/loadBalancerIPs: 172.20.20.23  # CHANGEME: use a free IP from your MetalLB pool
   resources:
     requests:
       cpu: 50m

@@ -1,5 +1,5 @@
 # ArgoCD Helm values
-# Access at https://172.20.20.22
+# Access at https://172.20.20.22  # CHANGEME: update after adapting the subnet
 
 global:
   domain: argocd.lab.local
@@ -8,7 +8,7 @@ server:
   service:
     type: LoadBalancer
     annotations:
-      metallb.universe.tf/loadBalancerIPs: 172.20.20.22
+      metallb.universe.tf/loadBalancerIPs: 172.20.20.22  # CHANGEME: use a free IP from your MetalLB pool
 
   # Ignore Istio sidecar injection diffs (auto-injected, not in Git)
   config:

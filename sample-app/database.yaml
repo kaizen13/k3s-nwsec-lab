@@ -18,6 +18,7 @@ metadata:
 spec:
   ports:
     - port: 5432
+      name: tcp-postgres  # Istio protocol detection requires named ports; tcp- prefix = plain TCP
   clusterIP: None   # Headless service for StatefulSet
   selector:
     app: demo-postgres
@@ -67,6 +68,12 @@ spec:
               command: ["pg_isready", "-U", "demouser", "-d", "demodb"]
             initialDelaySeconds: 10
             periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "demouser", "-d", "demodb"]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
       volumes:
         - name: init
           configMap:
@@ -100,3 +107,17 @@ data:
       ('Secure with Network Policies', true),
       ('Set up Grafana dashboards', false),
       ('Configure ArgoCD GitOps', false);
+---
+# DestinationRule: tells Istio (and Kiali) that traffic to demo-postgres uses
+# ISTIO_MUTUAL mTLS. Required to clear the "missing configuration" warning in
+# Kiali when STRICT PeerAuthentication is enforced mesh-wide.
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: demo-postgres
+  namespace: data
+spec:
+  host: demo-postgres.data.svc.cluster.local
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL

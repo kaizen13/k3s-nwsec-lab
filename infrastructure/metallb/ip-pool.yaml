@@ -1,4 +1,19 @@
 ---
+# =============================================================================
+# SUBNET CONFIGURATION — adapt this file before deploying to your environment
+#
+# The range below must be a free block on the same L2 segment as your k3s node.
+# This example uses 172.20.20.0/26. Replace it with your own internal subnet.
+#
+# After changing the range here, update the individual fixed IPs in:
+#   infrastructure/istio/istio-config.yaml    → metallb.universe.tf/loadBalancerIPs (IngressGateway)
+#   argocd/values.yaml                        → metallb.universe.tf/loadBalancerIPs (ArgoCD)
+#   monitoring/prometheus/values.yaml         → metallb.universe.tf/loadBalancerIPs (Grafana)
+#   monitoring/kiali/values.yaml              → metallb.universe.tf/loadBalancerIPs (Kiali)
+#   monitoring/jaeger/jaeger.yaml             → patch command comment (Jaeger)
+#   scripts/verify.sh                         → LoadBalancer IP checks
+#   README.md                                 → IP Allocation table + Prerequisites
+# =============================================================================
 apiVersion: metallb.io/v1beta1
 kind: IPAddressPool
 metadata:
@@ -6,7 +21,7 @@ metadata:
   namespace: metallb-system
 spec:
   addresses:
-    - 172.20.20.21-172.20.20.40
+    - 172.20.20.21-172.20.20.40  # CHANGEME: replace with a free range in your subnet
 ---
 apiVersion: metallb.io/v1beta1
 kind: L2Advertisement

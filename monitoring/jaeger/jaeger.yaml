@@ -18,3 +18,4 @@ spec:
   # NOTE: Jaeger operator doesn't support service annotations directly;
   # patch the service after deployment with:
   # kubectl patch svc jaeger-query -n observability -p '{"spec":{"type":"LoadBalancer"},"metadata":{"annotations":{"metallb.universe.tf/loadBalancerIPs":"172.20.20.25"}}}'
+  # CHANGEME: replace 172.20.20.25 with a free IP from your MetalLB pool

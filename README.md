@@ -74,7 +74,13 @@ MONITORING (Direct LoadBalancer IPs — internal network only):
 
 ---
 
-## IP Allocation (172.20.20.0/26)
+## IP Allocation (172.20.20.0/26 — example subnet, replace with your own)
+
+> **Adapting the subnet:** The `172.20.20.0/26` range is an example. Change the pool in
+> `infrastructure/metallb/ip-pool.yaml` and update the matching `metallb.universe.tf/loadBalancerIPs`
+> annotations in `infrastructure/istio/istio-config.yaml`, `argocd/values.yaml`,
+> `monitoring/prometheus/values.yaml`, `monitoring/kiali/values.yaml`, and the patch command in
+> `monitoring/jaeger/jaeger.yaml`. Also update `scripts/verify.sh` and the Prerequisites below.
 
 | IP Address | Service | Port(s) | Access |
 |---|---|---|---|
@@ -148,8 +154,8 @@ k8s-security-lab/
 ### Prerequisites
 - Proxmox VM: 12 vCPU / 24GB RAM / 80GB disk
 - Ubuntu Server 24.04 LTS
-- Static IP: 172.20.20.5/26
-- Network access to 172.20.20.0/26 subnet
+- Static IP on your internal network (example uses `172.20.20.5/26` — adapt to your subnet)
+- A free IP range on the same L2 segment for MetalLB (example: `172.20.20.21–40`)
 
 ### Installation
 

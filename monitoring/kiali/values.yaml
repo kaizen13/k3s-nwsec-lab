@@ -4,15 +4,31 @@ auth:
 deployment:
   service_type: LoadBalancer
   service_annotations:
-    metallb.universe.tf/loadBalancerIPs: 172.20.20.24
+    metallb.universe.tf/loadBalancerIPs: 172.20.20.24  # CHANGEME: use a free IP from your MetalLB pool
+  # Tell Istio (and Kiali itself) this pod is intentionally outside the mesh.
+  # Without this, Kiali warns about its own missing sidecar.
+  pod_annotations:
+    sidecar.istio.io/inject: "false"
+  # Restrict Kiali to only the Istio-meshed namespaces.
+  # monitoring/observability are intentionally excluded — their pods have no
+  # sidecars and would otherwise generate spurious sidecar warnings.
+  accessible_namespaces:
+    - istio-system
+    - frontend
+    - backend
+    - data
 
 external_services:
   prometheus:
     url: http://prometheus-kube-prometheus-prometheus.monitoring:9090
   grafana:
     enabled: true
-    url: http://prometheus-grafana.monitoring:80
+    url: http://172.20.20.23  # CHANGEME: external URL used for deep-link buttons in Kiali UI
     in_cluster_url: http://prometheus-grafana.monitoring:80
+    auth:
+      type: basic
+      username: admin
+      password: admin123  # matches grafana.adminPassword in monitoring/prometheus/values.yaml
   tracing:
     enabled: true
     in_cluster_url: http://jaeger-query.observability:16686

@@ -10,6 +10,8 @@ fail(){ echo "  ✘ $*"; FAIL=$((FAIL+1)); }
 hdr() { echo ""; echo "── $* ──────────────────────────────────"; }
 
 hdr "LoadBalancer IPs (MetalLB)"
+# CHANGEME: if you adapted the subnet, update these IPs to match your MetalLB assignments
+# (infrastructure/metallb/ip-pool.yaml and the individual service values files)
 for svc_check in "istio-system/istio-ingressgateway:172.20.20.21" \
                   "monitoring/prometheus-grafana:172.20.20.23" \
                   "monitoring/kiali:172.20.20.24" \

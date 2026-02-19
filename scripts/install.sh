@@ -133,9 +133,10 @@ cd ~
 kubectl apply -f "$REPO_DIR/sample-app/database.yaml"
 kubectl wait --for=condition=ready pod -l app=demo-postgres -n data --timeout=120s
 
-# Copy DB secret to backend namespace
+# Copy DB secret to backend namespace (delete-then-create avoids resourceVersion conflicts on re-runs)
+kubectl delete secret demo-db-credentials -n backend --ignore-not-found
 kubectl get secret demo-db-credentials -n data -o yaml | \
-  sed 's/namespace: data/namespace: backend/' | kubectl apply -f -
+  sed 's/namespace: data/namespace: backend/' | kubectl create -f -
 
 kubectl apply -f "$REPO_DIR/sample-app/backend-deploy.yaml"
 kubectl apply -f "$REPO_DIR/sample-app/frontend-deploy.yaml"
@@ -164,9 +165,15 @@ kubectl create namespace observability --dry-run=client -o yaml | kubectl apply 
 kubectl apply -f https://github.com/jaegertracing/jaeger-operator/releases/download/v1.51.0/jaeger-operator.yaml \
   -n observability 2>/dev/null || true
 kubectl wait --namespace observability --for=condition=ready pod \
-  --selector=app.kubernetes.io/name=jaeger-operator --timeout=90s
+  --selector=name=jaeger-operator --timeout=90s
 kubectl apply -f "$REPO_DIR/monitoring/jaeger/jaeger.yaml"
-sleep 15
+# Wait for operator to create the jaeger deployment (may take 10-30s)
+log "Waiting for Jaeger deployment to be created by operator..."
+for i in {1..24}; do
+  kubectl get deployment jaeger -n observability &>/dev/null && break
+  sleep 5
+done
+kubectl wait --namespace observability --for=condition=available deployment/jaeger --timeout=120s 2>/dev/null || true
 kubectl patch svc jaeger-query -n observability \
   -p '{"spec":{"type":"LoadBalancer"},"metadata":{"annotations":{"metallb.universe.tf/loadBalancerIPs":"172.20.20.25"}}}' \
   2>/dev/null || true
