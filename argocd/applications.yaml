@@ -1,0 +1,63 @@
+---
+# App-of-apps: manages all lab components from Git
+# Apply this after ArgoCD is installed to bring GitOps control over the lab
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: lab-infrastructure
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/YOUR_USERNAME/k8s-security-lab.git
+    targetRevision: HEAD
+    path: infrastructure
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true  # Auto-restores drift — great for security demo!
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: network-policies
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/YOUR_USERNAME/k8s-security-lab.git
+    targetRevision: HEAD
+    path: infrastructure/network-policies
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true  # Detects and restores manually deleted network policies
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: sample-app
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/YOUR_USERNAME/k8s-security-lab.git
+    targetRevision: HEAD
+    path: sample-app
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: false   # Don't auto-delete app resources
+      selfHeal: true

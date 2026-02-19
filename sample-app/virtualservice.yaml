@@ -1,0 +1,21 @@
+---
+# Istio VirtualService: route demo.lab.local traffic to frontend pods
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: demo-app
+  namespace: frontend
+spec:
+  hosts:
+    - "demo.lab.local"
+  gateways:
+    - istio-system/lab-gateway
+  http:
+    - match:
+        - uri:
+            prefix: /
+      route:
+        - destination:
+            host: demo-frontend.frontend.svc.cluster.local
+            port:
+              number: 80

@@ -1,0 +1,39 @@
+---
+# Ingress namespace (DMZ security zone)
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ingress
+  labels:
+    name: ingress
+    security-zone: dmz
+---
+# Frontend namespace (internal security zone)
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: frontend
+  labels:
+    name: frontend
+    security-zone: internal
+    istio-injection: enabled
+---
+# Backend namespace (internal security zone)
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: backend
+  labels:
+    name: backend
+    security-zone: internal
+    istio-injection: enabled
+---
+# Data namespace (restricted security zone)
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: data
+  labels:
+    name: data
+    security-zone: data
+    istio-injection: enabled

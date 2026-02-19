@@ -1,0 +1,69 @@
+# kube-prometheus-stack values
+# Install BEFORE NGINX Ingress to avoid ServiceMonitor CRD errors
+
+prometheus:
+  prometheusSpec:
+    serviceMonitorSelectorNilUsesHelmValues: false
+    retention: 7d
+    resources:
+      requests:
+        cpu: 100m
+        memory: 512Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+
+grafana:
+  enabled: true
+  adminPassword: admin123  # Change in production!
+  service:
+    type: LoadBalancer
+    annotations:
+      metallb.universe.tf/loadBalancerIPs: 172.20.20.23
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  # Pre-load Istio dashboards
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: default
+          orgId: 1
+          folder: ''
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/default
+
+alertmanager:
+  enabled: false
+
+nodeExporter:
+  enabled: false
+
+# Istio metrics scraping
+additionalServiceMonitors:
+  - name: istio-component-monitor
+    additionalLabels:
+      monitoring: istio-components
+    jobLabel: istio
+    targetLabels:
+      - app
+    selector:
+      matchExpressions:
+        - key: istio
+          operator: In
+          values:
+            - pilot
+    namespaceSelector:
+      matchNames:
+        - istio-system
+    endpoints:
+      - port: http-monitoring
+        interval: 15s

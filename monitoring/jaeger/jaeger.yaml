@@ -1,0 +1,21 @@
+---
+apiVersion: jaegertracing.io/v1
+kind: Jaeger
+metadata:
+  name: jaeger
+  namespace: monitoring
+spec:
+  strategy: allInOne
+  allInOne:
+    image: jaegertracing/all-in-one:1.51
+    options:
+      log-level: info
+  ingress:
+    enabled: false
+  annotations:
+    sidecar.istio.io/inject: "false"
+  # Expose via LoadBalancer for direct access from internal network
+  # NOTE: Jaeger operator doesn't support service annotations directly;
+  # patch the service after deployment with:
+  # kubectl patch svc jaeger-query -n monitoring -p '{"spec":{"type":"LoadBalancer"}}'
+  # kubectl annotate svc jaeger-query -n monitoring metallb.universe.tf/loadBalancerIPs=172.20.20.25

@@ -1,0 +1,43 @@
+---
+# Frontend: Allow ingress from Istio IngressGateway, egress to backend + DNS
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: frontend-demo-policy
+  namespace: frontend
+spec:
+  podSelector:
+    matchLabels:
+      app: demo-frontend
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow traffic from Istio IngressGateway (sidecar-injected)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: istio-system
+      ports:
+        - protocol: TCP
+          port: 80
+  egress:
+    # Allow to backend pods only
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: backend
+          podSelector:
+            matchLabels:
+              app: demo-backend
+      ports:
+        - protocol: TCP
+          port: 8000
+    # Allow DNS resolution
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53

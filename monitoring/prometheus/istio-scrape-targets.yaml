@@ -1,0 +1,53 @@
+---
+# PodMonitor: scrape Istio sidecar proxies (Envoy metrics) in app namespaces
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: istio-proxies
+  namespace: monitoring
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchExpressions:
+      - key: istio-prometheus-ignore
+        operator: DoesNotExist
+  namespaceSelector:
+    any: true
+  jobLabel: envoy-stats
+  podMetricsEndpoints:
+    - path: /stats/prometheus
+      targetPort: 15090
+      interval: 15s
+      relabelings:
+        - action: keep
+          sourceLabels: [__meta_kubernetes_pod_container_name]
+          regex: "istio-proxy"
+        - action: drop
+          sourceLabels: [__meta_kubernetes_pod_phase]
+          regex: "Succeeded|Failed"
+---
+# ServiceMonitor: scrape Istio control plane (istiod)
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: istio-component-monitor
+  namespace: monitoring
+  labels:
+    release: prometheus
+spec:
+  jobLabel: istio
+  targetLabels:
+    - app
+  selector:
+    matchExpressions:
+      - key: istio
+        operator: In
+        values:
+          - pilot
+  namespaceSelector:
+    matchNames:
+      - istio-system
+  endpoints:
+    - port: http-monitoring
+      interval: 15s

@@ -1,0 +1,69 @@
+---
+# Backend: Allow ingress from frontend only, egress to database + DNS
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: backend-demo-policy
+  namespace: backend
+spec:
+  podSelector:
+    matchLabels:
+      app: demo-backend
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: frontend
+          podSelector:
+            matchLabels:
+              app: demo-frontend
+      ports:
+        - protocol: TCP
+          port: 8000
+  egress:
+    # Allow to PostgreSQL in data namespace only
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: data
+          podSelector:
+            matchLabels:
+              app: demo-postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Allow DNS resolution
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+---
+# Database: Allow ingress from backend only, NO egress
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: data-demo-policy
+  namespace: data
+spec:
+  podSelector:
+    matchLabels:
+      app: demo-postgres
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: backend
+          podSelector:
+            matchLabels:
+              app: demo-backend
+      ports:
+        - protocol: TCP
+          port: 5432

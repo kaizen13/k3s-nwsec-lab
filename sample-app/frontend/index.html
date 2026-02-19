@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>K8s Security Lab — Todo Demo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+    header { background: #1e293b; border-bottom: 1px solid #334155; padding: 16px 24px; display: flex; align-items: center; gap: 12px; }
+    header h1 { font-size: 1.25rem; color: #38bdf8; }
+    .badge { background: #166534; color: #86efac; font-size: 0.7rem; padding: 2px 8px; border-radius: 12px; font-weight: 600; }
+    .container { max-width: 700px; margin: 32px auto; padding: 0 16px; }
+    .arch-info { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 16px; margin-bottom: 24px; font-size: 0.8rem; color: #94a3b8; }
+    .arch-info strong { color: #38bdf8; }
+    .arch-info .flow { margin-top: 8px; font-family: monospace; color: #7dd3fc; }
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 20px; margin-bottom: 16px; }
+    .input-row { display: flex; gap: 8px; }
+    input[type="text"] { flex: 1; padding: 10px 14px; background: #0f172a; border: 1px solid #475569; border-radius: 6px; color: #e2e8f0; font-size: 0.95rem; }
+    input[type="text"]:focus { outline: none; border-color: #38bdf8; }
+    button { padding: 10px 18px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: 0.15s; }
+    .btn-primary { background: #0284c7; color: white; }
+    .btn-primary:hover { background: #0369a1; }
+    .btn-danger { background: transparent; color: #f87171; border: 1px solid #f87171; padding: 4px 10px; font-size: 0.8rem; }
+    .btn-danger:hover { background: #f87171; color: white; }
+    h2 { font-size: 1rem; color: #94a3b8; margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .todo-item { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid #334155; border-radius: 6px; margin-bottom: 8px; transition: 0.15s; }
+    .todo-item:hover { border-color: #475569; }
+    .todo-item.done { opacity: 0.5; }
+    .todo-item span { flex: 1; font-size: 0.95rem; }
+    .todo-item.done span { text-decoration: line-through; }
+    input[type="checkbox"] { width: 16px; height: 16px; accent-color: #38bdf8; cursor: pointer; }
+    .empty { text-align: center; color: #475569; padding: 32px 0; font-size: 0.9rem; }
+    .status { margin-top: 8px; font-size: 0.75rem; color: #64748b; }
+    .status.error { color: #f87171; }
+  </style>
+</head>
+<body>
+  <header>
+    <span>⎈</span>
+    <h1>K8s Network Security Lab</h1>
+    <span class="badge">WAF ✔</span>
+    <span class="badge">mTLS ✔</span>
+    <span class="badge">NetPol ✔</span>
+  </header>
+
+  <div class="container">
+    <div class="arch-info">
+      <strong>Traffic Path:</strong> Your Browser → NGINX (WAF) → Istio Gateway (mTLS) → Frontend → Backend → PostgreSQL
+      <div class="flow">172.20.20.21 → ClusterIP → frontend ns → backend ns → data ns</div>
+    </div>
+
+    <div class="card">
+      <h2>Add Task</h2>
+      <div class="input-row">
+        <input type="text" id="newTodo" placeholder="Enter a new task..." />
+        <button class="btn-primary" onclick="addTodo()">Add</button>
+      </div>
+      <div class="status" id="status"></div>
+    </div>
+
+    <div class="card">
+      <h2>Tasks</h2>
+      <div id="todos"><div class="empty">Loading...</div></div>
+    </div>
+  </div>
+
+  <script>
+    const API = '/api';
+
+    async function loadTodos() {
+      try {
+        const res = await fetch(`${API}/todos`);
+        const todos = await res.json();
+        const container = document.getElementById('todos');
+        if (!todos.length) {
+          container.innerHTML = '<div class="empty">No tasks yet. Add one above!</div>';
+          return;
+        }
+        container.innerHTML = todos.map(t => `
+          <div class="todo-item ${t.completed ? 'done' : ''}">
+            <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTodo(${t.id}, this.checked)" />
+            <span>${escapeHtml(t.title)}</span>
+            <button class="btn-danger" onclick="deleteTodo(${t.id})">Delete</button>
+          </div>
+        `).join('');
+      } catch (e) {
+        document.getElementById('todos').innerHTML = '<div class="empty" style="color:#f87171">Could not reach backend. Check network policies.</div>';
+      }
+    }
+
+    async function addTodo() {
+      const input = document.getElementById('newTodo');
+      const status = document.getElementById('status');
+      const title = input.value.trim();
+      if (!title) return;
+      try {
+        await fetch(`${API}/todos`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, completed: false })
+        });
+        input.value = '';
+        status.textContent = '';
+        loadTodos();
+      } catch (e) {
+        status.textContent = 'Error: ' + e.message;
+        status.className = 'status error';
+      }
+    }
+
+    async function toggleTodo(id, completed) {
+      await fetch(`${API}/todos/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ completed })
+      });
+      loadTodos();
+    }
+
+    async function deleteTodo(id) {
+      await fetch(`${API}/todos/${id}`, { method: 'DELETE' });
+      loadTodos();
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    document.getElementById('newTodo').addEventListener('keypress', e => {
+      if (e.key === 'Enter') addTodo();
+    });
+
+    loadTodos();
+  </script>
+</body>
+</html>

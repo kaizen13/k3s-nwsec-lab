@@ -1,0 +1,50 @@
+controller:
+  kind: Deployment
+  replicaCount: 1
+
+  service:
+    type: LoadBalancer
+    annotations:
+      # Pin to specific MetalLB IP — main application entry point
+      metallb.universe.tf/loadBalancerIPs: 172.20.20.21
+
+  config:
+    # ModSecurity WAF
+    enable-modsecurity: "true"
+    enable-owasp-modsecurity-crs: "true"
+    modsecurity-snippet: |
+      SecRuleEngine On
+      SecRequestBodyAccess On
+      SecAuditLog /dev/stdout
+      SecAuditLogFormat JSON
+      SecAuditEngine RelevantOnly
+      # Custom rate limiting via NGINX (complement to K8s-level limiting)
+      SecRule REQUEST_HEADERS:User-Agent "@contains sqlmap" "id:1000,phase:1,deny,status:403,msg:'Scanner detected'"
+
+    # Rate limiting
+    limit-req-status-code: "429"
+    limit-conn-status-code: "429"
+
+    # Security headers
+    add-headers: "ingress/security-headers"
+
+    # Logging
+    log-format-upstream: '{"time":"$time_iso8601","remote_addr":"$remote_addr","status":"$status","method":"$request_method","uri":"$uri","upstream":"$upstream_addr","req_time":"$request_time"}'
+
+  # Prometheus metrics for Grafana dashboards
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      namespace: monitoring
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+defaultBackend:
+  enabled: false

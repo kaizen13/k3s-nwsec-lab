@@ -1,0 +1,102 @@
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: demo-db-credentials
+  namespace: data
+type: Opaque
+stringData:
+  POSTGRES_USER: demouser
+  POSTGRES_PASSWORD: DemoPass123!
+  POSTGRES_DB: demodb
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo-postgres
+  namespace: data
+spec:
+  ports:
+    - port: 5432
+  clusterIP: None   # Headless service for StatefulSet
+  selector:
+    app: demo-postgres
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: demo-postgres
+  namespace: data
+spec:
+  serviceName: demo-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo-postgres
+  template:
+    metadata:
+      labels:
+        app: demo-postgres
+        version: "15"
+    spec:
+      securityContext:
+        runAsNonRoot: false   # postgres requires root to start, drops after
+        fsGroup: 999
+      containers:
+        - name: postgres
+          image: postgres:15-alpine
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - secretRef:
+                name: demo-db-credentials
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+            - name: init
+              mountPath: /docker-entrypoint-initdb.d
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "demouser", "-d", "demodb"]
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      volumes:
+        - name: init
+          configMap:
+            name: demo-db-init
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 2Gi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: demo-db-init
+  namespace: data
+data:
+  init.sql: |
+    CREATE TABLE IF NOT EXISTS todos (
+      id SERIAL PRIMARY KEY,
+      title VARCHAR(200) NOT NULL,
+      completed BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+    INSERT INTO todos (title, completed) VALUES
+      ('Learn Kubernetes', false),
+      ('Deploy with Istio', false),
+      ('Secure with Network Policies', true),
+      ('Set up Grafana dashboards', false),
+      ('Configure ArgoCD GitOps', false);

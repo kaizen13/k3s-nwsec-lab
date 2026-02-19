@@ -1,0 +1,37 @@
+# ArgoCD Helm values
+# Access at https://172.20.20.22
+
+global:
+  domain: argocd.lab.local
+
+server:
+  service:
+    type: LoadBalancer
+    annotations:
+      metallb.universe.tf/loadBalancerIPs: 172.20.20.22
+
+  # Ignore Istio sidecar injection diffs (auto-injected, not in Git)
+  config:
+    resource.customizations.ignoreDifferences.admissionwebhooks.k8s.io_MutatingWebhookConfiguration: |
+      jsonPointers:
+        - /webhooks/0/clientConfig/caBundle
+
+  # Insecure for lab (terminates TLS at LB level)
+  extraArgs:
+    - --insecure
+
+configs:
+  params:
+    server.insecure: true
+
+repoServer:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+
+applicationSet:
+  enabled: true
+
+notifications:
+  enabled: false

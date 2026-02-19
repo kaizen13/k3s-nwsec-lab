@@ -1,0 +1,25 @@
+auth:
+  strategy: anonymous   # Use token or openid in production
+
+deployment:
+  service:
+    type: LoadBalancer
+    annotations:
+      metallb.universe.tf/loadBalancerIPs: 172.20.20.24
+
+external_services:
+  prometheus:
+    url: http://prometheus-kube-prometheus-prometheus.monitoring:9090
+  grafana:
+    enabled: true
+    url: http://prometheus-grafana.monitoring:80
+    in_cluster_url: http://prometheus-grafana.monitoring:80
+  tracing:
+    enabled: true
+    in_cluster_url: http://jaeger-query.monitoring:16686
+    use_grpc: false
+
+server:
+  port: 20001
+  metrics_enabled: true
+  metrics_port: 9090
