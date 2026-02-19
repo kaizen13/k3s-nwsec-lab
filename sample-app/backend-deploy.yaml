@@ -67,3 +67,17 @@ spec:
       name: http
   selector:
     app: demo-backend
+---
+# DestinationRule: explicit ISTIO_MUTUAL mTLS for backend service.
+# Clears Kiali "missing configuration" warning and ensures IngressGateway
+# uses mTLS when routing /api/* directly to this service.
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: demo-backend
+  namespace: backend
+spec:
+  host: demo-backend.backend.svc.cluster.local
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL

@@ -1,5 +1,11 @@
 ---
-# Istio VirtualService: route demo.lab.local traffic to frontend pods
+# Istio VirtualService: route all demo.lab.local traffic through the frontend.
+# nginx then proxies /api/* to the backend, giving the classic 3-tier graph in Kiali:
+#   IngressGateway → demo-frontend → demo-backend → demo-postgres
+#
+# This works because a DestinationRule (ISTIO_MUTUAL) exists for demo-backend,
+# so the frontend Envoy sidecar routes nginx's outbound connection via the named
+# mTLS cluster instead of PassthroughCluster.
 apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
 metadata:

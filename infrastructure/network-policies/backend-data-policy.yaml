@@ -1,5 +1,6 @@
 ---
-# Backend: Allow ingress from frontend only, egress to database + DNS
+# Backend: Allow ingress from IngressGateway + frontend + Prometheus scraping,
+#          egress to database + DNS + istiod
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -13,6 +14,16 @@ spec:
     - Ingress
     - Egress
   ingress:
+    # Allow from Istio IngressGateway — used when VirtualService routes /api/*
+    # directly to backend (bypassing frontend nginx proxy)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: istio-system
+      ports:
+        - protocol: TCP
+          port: 8000
+    # Allow from frontend pods — kept for defence-in-depth / future use
     - from:
         - namespaceSelector:
             matchLabels:
@@ -23,6 +34,14 @@ spec:
       ports:
         - protocol: TCP
           port: 8000
+    # Allow Prometheus to scrape sidecar metrics — needed for Kiali mTLS visibility
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - protocol: TCP
+          port: 15090
   egress:
     # Allow to PostgreSQL in data namespace only
     - to:
@@ -54,7 +73,7 @@ spec:
         - protocol: TCP
           port: 15010
 ---
-# Database: Allow ingress from backend only; egress only to istiod (for Istio sidecar)
+# Database: Allow ingress from backend + Prometheus; egress to istiod
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -78,6 +97,14 @@ spec:
       ports:
         - protocol: TCP
           port: 5432
+    # Allow Prometheus to scrape sidecar metrics — needed for Kiali mTLS visibility
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - protocol: TCP
+          port: 15090
   egress:
     # Allow DNS resolution
     - to:

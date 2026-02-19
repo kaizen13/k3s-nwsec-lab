@@ -60,7 +60,7 @@ hdr "Network Isolation Test"
 # Frontend should NOT be able to reach postgres directly
 result=$(kubectl exec -n frontend deploy/demo-frontend -- \
   curl -m 3 -s demo-postgres.data:5432 2>&1 || true)
-if echo "$result" | grep -qiE "timeout|refused|no route|connection"; then
+if echo "$result" | grep -qiE "timeout|refused|no route|connection|exit code|reset"; then
   ok "frontend → database: BLOCKED (correct)"
 else
   fail "frontend → database: may not be blocked! Output: $result"

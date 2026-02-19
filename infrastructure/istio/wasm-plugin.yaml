@@ -24,5 +24,8 @@ spec:
         - SecAuditLog /dev/stdout
         - SecAuditLogFormat JSON
         - SecAuditEngine RelevantOnly
+        # CRS rule 911100 only allows GET/HEAD/POST/OPTIONS by default.
+        # Remove it so REST verbs (PATCH, DELETE, PUT) reach the backend.
+        - SecRuleRemoveById 911100
         - SecRule REQUEST_HEADERS:User-Agent "@contains sqlmap" "id:1000,phase:1,deny,status:403,msg:'Scanner detected'"
     default_directives: default
