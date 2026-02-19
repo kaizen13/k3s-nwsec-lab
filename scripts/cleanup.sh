@@ -4,7 +4,7 @@
 # Usage: ./cleanup.sh [app|monitoring|all|wipe]
 # =============================================================================
 export KUBECONFIG=~/.kube/config
-REPO_DIR="$HOME/k8s-security-lab"
+REPO_DIR="$HOME/k3s-nwsec-lab"
 MODE="${1:-app}"
 
 remove_app() {
