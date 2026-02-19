@@ -2,10 +2,9 @@ auth:
   strategy: anonymous   # Use token or openid in production
 
 deployment:
-  service:
-    type: LoadBalancer
-    annotations:
-      metallb.universe.tf/loadBalancerIPs: 172.20.20.24
+  service_type: LoadBalancer
+  service_annotations:
+    metallb.universe.tf/loadBalancerIPs: 172.20.20.24
 
 external_services:
   prometheus:

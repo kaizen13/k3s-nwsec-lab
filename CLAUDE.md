@@ -83,17 +83,18 @@ kubectl exec -n frontend deploy/demo-frontend -- curl -m 5 demo-postgres.data:54
 
 ### Traffic Flow (Defense-in-Depth)
 ```
-Internet → NGINX Ingress (172.20.20.21) → Istio IngressGateway (ClusterIP) → App Pods
+Internet → Istio IngressGateway (LoadBalancer 172.20.20.21)
+             + Coraza WasmPlugin (OWASP CRS — blocks SQLi/XSS)
+             + EnvoyFilter (local rate limiting, 100 req/min)
+           → App Pods (mTLS enforced)
 ```
-- **NGINX Ingress** (`ingress` namespace): External entry, ModSecurity WAF (OWASP CRS), rate limiting (100 req/min), TLS termination
-- **Istio IngressGateway**: Intentionally ClusterIP (no direct external access) — all external traffic MUST pass through NGINX WAF first
+- **Istio IngressGateway** (`istio-system`): External entry point, Coraza WAF (OWASP CRS via WasmPlugin), local rate limiting (EnvoyFilter), security response headers (VirtualService)
 - **Application namespaces**: `frontend`, `backend`, `data` — each with default-deny NetworkPolicy + explicit allow rules
 
 ### Namespace Structure
 | Namespace | Contents | Istio Sidecar |
 |---|---|---|
-| `ingress` | NGINX Ingress Controller | No |
-| `istio-system` | Istio control plane, IngressGateway | N/A |
+| `istio-system` | Istio control plane, IngressGateway (public entry + Coraza WAF) | N/A |
 | `frontend` | React/HTML app (nginx) | Yes |
 | `backend` | FastAPI Todo API | Yes |
 | `data` | PostgreSQL StatefulSet | Yes |
@@ -104,7 +105,7 @@ Internet → NGINX Ingress (172.20.20.21) → Istio IngressGateway (ClusterIP) �
 ### MetalLB IP Allocation
 | IP | Service | Port |
 |---|---|---|
-| 172.20.20.21 | NGINX Ingress (public entry) | 80, 443 |
+| 172.20.20.21 | Istio IngressGateway (public entry + Coraza WAF) | 80, 443 |
 | 172.20.20.22 | ArgoCD | 443 |
 | 172.20.20.23 | Grafana | 80 |
 | 172.20.20.24 | Kiali | 20001 |
@@ -118,7 +119,8 @@ Internet → NGINX Ingress (172.20.20.21) → Istio IngressGateway (ClusterIP) �
 - DB credentials secret exists only in `data` namespace; install script copies it to `backend` namespace
 
 ### Key Security Invariants
-- Istio IngressGateway **must** be `ClusterIP` (not LoadBalancer) — verify.sh checks this
+- Istio IngressGateway **must** be `LoadBalancer` with IP `172.20.20.21` — verify.sh checks this
+- WasmPlugin `coraza-waf` and EnvoyFilter `ingress-rate-limit` must exist in `istio-system` — verify.sh checks these
 - PeerAuthentication mode **must** be `STRICT` in `istio-system`
 - All three app namespaces must have `default-deny-all` NetworkPolicy
 - Namespaces need label `istio-injection=enabled` for sidecar injection
@@ -127,11 +129,8 @@ Internet → NGINX Ingress (172.20.20.21) → Istio IngressGateway (ClusterIP) �
 | Release | Namespace | Chart |
 |---|---|---|
 | `prometheus` | monitoring | prometheus-community/kube-prometheus-stack |
-| `nginx-ingress` | ingress | ingress-nginx/ingress-nginx |
 | `cert-manager` | cert-manager | jetstack/cert-manager |
 | `kiali-server` | monitoring | kiali/kiali-server |
-
-**Install order matters**: Prometheus must be installed before NGINX Ingress (NGINX creates a ServiceMonitor that requires Prometheus CRDs).
 
 ### ArgoCD GitOps
 `argocd/applications.yaml` uses the app-of-apps pattern to manage all components. ArgoCD detects drift (e.g., manually deleted NetworkPolicy) and auto-restores within ~3 minutes.
@@ -142,4 +141,5 @@ Internet → NGINX Ingress (172.20.20.21) → Istio IngressGateway (ClusterIP) �
 - **Jaeger shows no traces**: Restart app pods after Jaeger is deployed; generate traffic with `traffic-gen.sh`
 - **Grafana missing Istio metrics**: Apply `monitoring/prometheus/istio-scrape-targets.yaml`
 - **Pods OOMKilled**: Scale down replicas — this is a single node with 24GB RAM shared across everything
-- **cleanup.sh `REPO_DIR`**: The script has a hardcoded path `$HOME/k8s-security-lab` — if the repo is at a different path, edit that variable before running
+- **Coraza WasmPlugin not blocking**: Verify the plugin loaded with `kubectl get wasmplugin -n istio-system`; check IngressGateway logs for WASM errors
+- **WAF false positives**: Add `SecRuleRemoveById <id>` directives to the `pluginConfig` in `infrastructure/istio/wasm-plugin.yaml`

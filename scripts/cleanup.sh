@@ -4,12 +4,11 @@
 # Usage: ./cleanup.sh [app|monitoring|all|wipe]
 # =============================================================================
 export KUBECONFIG=~/.kube/config
-REPO_DIR="$HOME/k8s-security-lab"
+REPO_DIR="$HOME/k3s-nwsec-lab"
 MODE="${1:-app}"
 
 remove_app() {
   echo "Removing sample application..."
-  kubectl delete -f "$REPO_DIR/sample-app/ingress.yaml" --ignore-not-found
   kubectl delete -f "$REPO_DIR/sample-app/virtualservice.yaml" --ignore-not-found
   kubectl delete -f "$REPO_DIR/sample-app/frontend-deploy.yaml" --ignore-not-found
   kubectl delete -f "$REPO_DIR/sample-app/backend-deploy.yaml" --ignore-not-found
@@ -35,9 +34,6 @@ remove_all() {
   echo "Removing Istio..."
   istioctl uninstall --purge -y 2>/dev/null || true
   kubectl delete namespace istio-system --ignore-not-found
-  echo "Removing NGINX Ingress..."
-  helm uninstall nginx-ingress -n ingress 2>/dev/null || true
-  kubectl delete namespace ingress --ignore-not-found
   echo "Removing cert-manager..."
   helm uninstall cert-manager -n cert-manager 2>/dev/null || true
   kubectl delete namespace cert-manager --ignore-not-found

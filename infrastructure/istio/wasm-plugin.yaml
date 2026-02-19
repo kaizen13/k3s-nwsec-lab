@@ -1,0 +1,28 @@
+---
+# Coraza WAF — OWASP CRS running as an Envoy WASM filter on the IngressGateway
+# Direct successor to ModSecurity; blocks SQLi, XSS, scanner user-agents, etc.
+apiVersion: extensions.istio.io/v1alpha1
+kind: WasmPlugin
+metadata:
+  name: coraza-waf
+  namespace: istio-system
+spec:
+  selector:
+    matchLabels:
+      istio: ingressgateway
+  url: oci://ghcr.io/corazawaf/coraza-proxy-wasm:0.6.0
+  phase: AUTHN
+  failStrategy: FAIL_OPEN
+  pluginConfig:
+    directives_map:
+      default:
+        - Include @recommended-conf
+        - Include @crs-setup-conf
+        - Include @owasp_crs/*.conf
+        - SecRuleEngine On
+        - SecRequestBodyAccess On
+        - SecAuditLog /dev/stdout
+        - SecAuditLogFormat JSON
+        - SecAuditEngine RelevantOnly
+        - SecRule REQUEST_HEADERS:User-Agent "@contains sqlmap" "id:1000,phase:1,deny,status:403,msg:'Scanner detected'"
+    default_directives: default

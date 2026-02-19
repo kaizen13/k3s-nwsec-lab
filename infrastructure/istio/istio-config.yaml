@@ -27,9 +27,11 @@ spec:
       - name: istio-ingressgateway
         enabled: true
         k8s:
-          # ClusterIP: all external traffic enters via NGINX, not directly
+          # LoadBalancer: IngressGateway is now the external entry point (Coraza WAF via WasmPlugin)
+          serviceAnnotations:
+            metallb.universe.tf/loadBalancerIPs: 172.20.20.21
           service:
-            type: ClusterIP
+            type: LoadBalancer
           resources:
             requests:
               cpu: 50m

@@ -1,0 +1,40 @@
+---
+# Local rate limiting on the Istio IngressGateway: 100 requests/min per client IP
+# Uses Envoy's built-in local rate limiter (no external rate-limit service required)
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: ingress-rate-limit
+  namespace: istio-system
+spec:
+  workloadSelector:
+    labels:
+      istio: ingressgateway
+  configPatches:
+    - applyTo: HTTP_FILTER
+      match:
+        context: GATEWAY
+        listener:
+          filterChain:
+            filter:
+              name: "envoy.filters.network.http_connection_manager"
+      patch:
+        operation: INSERT_BEFORE
+        value:
+          name: envoy.filters.http.local_ratelimit
+          typed_config:
+            "@type": type.googleapis.com/udpa.type.v1.TypedStruct
+            type_url: type.googleapis.com/envoy.extensions.filters.http.local_ratelimit.v3.LocalRateLimit
+            value:
+              stat_prefix: http_local_rate_limiter
+              token_bucket:
+                max_tokens: 100
+                tokens_per_fill: 100
+                fill_interval: 60s
+              filter_enabled:
+                default_value: { numerator: 100, denominator: HUNDRED }
+              filter_enforced:
+                default_value: { numerator: 100, denominator: HUNDRED }
+              response_headers_to_add:
+                - append: false
+                  header: { key: x-ratelimit-limit, value: "100" }

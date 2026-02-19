@@ -13,14 +13,14 @@ spec:
     - Ingress
     - Egress
   ingress:
-    # Allow traffic from Istio IngressGateway (sidecar-injected)
+    # Allow traffic from Istio IngressGateway (reaches pod on 8080, targetPort of service)
     - from:
         - namespaceSelector:
             matchLabels:
-              name: istio-system
+              kubernetes.io/metadata.name: istio-system
       ports:
         - protocol: TCP
-          port: 80
+          port: 8080
   egress:
     # Allow to backend pods only
     - to:
@@ -41,3 +41,13 @@ spec:
       ports:
         - protocol: UDP
           port: 53
+    # Allow Istio sidecar to reach istiod control plane (xDS + mTLS certs)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: istio-system
+      ports:
+        - protocol: TCP
+          port: 15012
+        - protocol: TCP
+          port: 15010

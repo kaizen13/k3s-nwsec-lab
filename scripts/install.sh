@@ -59,16 +59,16 @@ log "--- Installing cert-manager ---"
 kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.15.3/cert-manager.crds.yaml
 helm repo add jetstack https://charts.jetstack.io
 helm repo update
-helm install cert-manager jetstack/cert-manager \
+helm upgrade --install cert-manager jetstack/cert-manager \
   --namespace cert-manager --create-namespace --version v1.15.3
 kubectl wait --namespace cert-manager --for=condition=ready pod \
   --selector=app=cert-manager --timeout=90s
 kubectl apply -f "$REPO_DIR/infrastructure/cert-manager/cluster-issuer.yaml"
 
-log "--- Installing Prometheus + Grafana (MUST be before NGINX) ---"
+log "--- Installing Prometheus + Grafana ---"
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm repo update
-helm install prometheus prometheus-community/kube-prometheus-stack \
+helm upgrade --install prometheus prometheus-community/kube-prometheus-stack \
   --namespace monitoring --create-namespace \
   --values "$REPO_DIR/monitoring/prometheus/values.yaml"
 kubectl wait --namespace monitoring --for=condition=ready pod \
@@ -80,28 +80,16 @@ log "Grafana: http://172.20.20.23 (admin/admin123)"
 log "--- Week 2: Namespaces ---"
 kubectl apply -f "$REPO_DIR/infrastructure/namespaces/namespaces.yaml"
 
-log "--- Installing NGINX Ingress with ModSecurity WAF ---"
-helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
-helm repo update
-kubectl apply -f "$REPO_DIR/ingress/nginx-ingress/security-headers.yaml"
-helm install nginx-ingress ingress-nginx/ingress-nginx \
-  --namespace ingress \
-  --values "$REPO_DIR/ingress/nginx-ingress/values.yaml"
-kubectl wait --namespace ingress --for=condition=ready pod \
-  --selector=app.kubernetes.io/component=controller --timeout=90s
-log "NGINX Ingress (WAF): http://172.20.20.21"
-
-log "--- Installing Istio ---"
+log "--- Installing Istio (IngressGateway as public entry point) ---"
 curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.24.0 sh -
 sudo mv istio-1.24.0/bin/istioctl /usr/local/bin/
 kubectl create namespace istio-system --dry-run=client -o yaml | kubectl apply -f -
 istioctl install -f "$REPO_DIR/infrastructure/istio/istio-config.yaml" -y
 kubectl apply -f "$REPO_DIR/infrastructure/istio/peer-authentication.yaml"
 kubectl apply -f "$REPO_DIR/infrastructure/istio/gateway.yaml"
-
-ISTIO_TYPE=$(kubectl get svc -n istio-system istio-ingressgateway -o jsonpath='{.spec.type}')
-[[ "$ISTIO_TYPE" == "ClusterIP" ]] && log "Istio IngressGateway: ClusterIP (correct)" \
-  || log "WARNING: Istio IngressGateway type is $ISTIO_TYPE — should be ClusterIP!"
+kubectl apply -f "$REPO_DIR/infrastructure/istio/wasm-plugin.yaml"
+kubectl apply -f "$REPO_DIR/infrastructure/istio/rate-limit.yaml"
+log "Istio IngressGateway (WAF/Coraza): http://172.20.20.21"
 
 # ── WEEK 3: SAMPLE APPLICATION + NETWORK POLICIES ────────────────────────────
 
@@ -152,7 +140,6 @@ kubectl get secret demo-db-credentials -n data -o yaml | \
 kubectl apply -f "$REPO_DIR/sample-app/backend-deploy.yaml"
 kubectl apply -f "$REPO_DIR/sample-app/frontend-deploy.yaml"
 kubectl apply -f "$REPO_DIR/sample-app/virtualservice.yaml"
-kubectl apply -f "$REPO_DIR/sample-app/ingress.yaml"
 
 log "--- Applying Network Policies (default-deny + allow rules) ---"
 kubectl apply -f "$REPO_DIR/infrastructure/network-policies/default-deny.yaml"
@@ -165,7 +152,7 @@ kubectl apply -f "$REPO_DIR/monitoring/prometheus/istio-scrape-targets.yaml"
 log "--- Week 4: Kiali (service mesh visualization) ---"
 helm repo add kiali https://kiali.org/helm-charts
 helm repo update
-helm install kiali-server kiali/kiali-server \
+helm upgrade --install kiali-server kiali/kiali-server \
   --namespace monitoring \
   --values "$REPO_DIR/monitoring/kiali/values.yaml"
 log "Kiali: http://172.20.20.24:20001"

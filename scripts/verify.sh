@@ -5,24 +5,27 @@
 export KUBECONFIG=~/.kube/config
 
 PASS=0; FAIL=0
-ok()  { echo "  ✔ $*"; ((PASS++)); }
+ok()  { echo "  ✔ $*"; PASS=$((PASS+1)); }
 fail(){ echo "  ✘ $*"; ((FAIL++)); }
 hdr() { echo ""; echo "── $* ──────────────────────────────────"; }
 
 hdr "LoadBalancer IPs (MetalLB)"
-for svc_check in "ingress/nginx-ingress-controller:172.20.20.21" \
+for svc_check in "istio-system/istio-ingressgateway:172.20.20.21" \
                   "monitoring/prometheus-grafana:172.20.20.23" \
-                  "monitoring/kiali-server:172.20.20.24"; do
+                  "monitoring/kiali:172.20.20.24"; do
   ns="${svc_check%%/*}"; rest="${svc_check#*/}"
   svc="${rest%%:*}"; expected="${rest#*:}"
   ip=$(kubectl get svc "$svc" -n "$ns" -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null)
   [[ "$ip" == "$expected" ]] && ok "$svc → $ip" || fail "$svc expected $expected, got '$ip'"
 done
 
-hdr "Istio IngressGateway (must be ClusterIP)"
-type=$(kubectl get svc istio-ingressgateway -n istio-system -o jsonpath='{.spec.type}' 2>/dev/null)
-[[ "$type" == "ClusterIP" ]] && ok "istio-ingressgateway is ClusterIP" \
-  || fail "istio-ingressgateway is $type — should be ClusterIP!"
+hdr "Coraza WAF + Rate Limit (Istio extensions)"
+wp=$(kubectl get wasmplugin coraza-waf -n istio-system --no-headers 2>/dev/null | wc -l)
+[[ "$wp" -ge 1 ]] && ok "WasmPlugin coraza-waf present" \
+  || fail "WasmPlugin coraza-waf not found"
+ef=$(kubectl get envoyfilter ingress-rate-limit -n istio-system --no-headers 2>/dev/null | wc -l)
+[[ "$ef" -ge 1 ]] && ok "EnvoyFilter ingress-rate-limit present" \
+  || fail "EnvoyFilter ingress-rate-limit not found"
 
 hdr "STRICT mTLS"
 mode=$(kubectl get peerauthentication default -n istio-system -o jsonpath='{.spec.mtls.mode}' 2>/dev/null)
@@ -61,7 +64,7 @@ else
 fi
 
 hdr "Exposed Services Check (only expected LBs should exist)"
-lbs=$(kubectl get svc -A --no-headers | awk '$4=="LoadBalancer"' | awk '{print $1"/"$2}')
+lbs=$(kubectl get svc -A --no-headers | awk '$3=="LoadBalancer" {print $1"/"$2}')
 echo "  LoadBalancer services:"
 echo "$lbs" | while read -r svc; do echo "    $svc"; done
 

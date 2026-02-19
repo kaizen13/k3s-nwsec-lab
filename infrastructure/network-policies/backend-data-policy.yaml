@@ -43,8 +43,18 @@ spec:
       ports:
         - protocol: UDP
           port: 53
+    # Allow Istio sidecar to reach istiod control plane (xDS + mTLS certs)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: istio-system
+      ports:
+        - protocol: TCP
+          port: 15012
+        - protocol: TCP
+          port: 15010
 ---
-# Database: Allow ingress from backend only, NO egress
+# Database: Allow ingress from backend only; egress only to istiod (for Istio sidecar)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -56,6 +66,7 @@ spec:
       app: demo-postgres
   policyTypes:
     - Ingress
+    - Egress
   ingress:
     - from:
         - namespaceSelector:
@@ -67,3 +78,22 @@ spec:
       ports:
         - protocol: TCP
           port: 5432
+  egress:
+    # Allow DNS resolution
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+    # Allow Istio sidecar to reach istiod control plane (xDS + mTLS certs)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: istio-system
+      ports:
+        - protocol: TCP
+          port: 15012
+        - protocol: TCP
+          port: 15010

@@ -109,10 +109,10 @@ kubectl scale deployment demo-frontend -n frontend --replicas=1
 ### WAF not blocking SQL injection (returns 200 instead of 403)
 ```bash
 # Verify ModSecurity is enabled on the ingress
-kubectl get configmap -n ingress nginx-ingress-controller -o yaml | grep modsecurity
+kubectl get configmap -n ingress nginx-controller -o yaml | grep modsecurity
 
 # Check NGINX logs
-kubectl logs -n ingress deploy/nginx-ingress-controller | grep -i "ModSecurity"
+kubectl logs -n ingress deploy/nginx-controller | grep -i "ModSecurity"
 
 # Force enable on specific ingress annotation:
 # nginx.ingress.kubernetes.io/enable-modsecurity: "true"
