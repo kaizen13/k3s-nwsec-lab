@@ -23,8 +23,8 @@ spec:
         runAsUser: 1000
       containers:
         - name: api
-          image: demo-backend:v1
-          imagePullPolicy: Never   # Using locally imported image
+          image: docker.io/library/demo-backend:v1
+          imagePullPolicy: Never   # Built locally into k3s containerd via nerdctl
           ports:
             - containerPort: 8000
           envFrom:

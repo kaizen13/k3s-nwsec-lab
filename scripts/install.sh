@@ -5,7 +5,7 @@
 # =============================================================================
 set -e
 
-REPO_DIR="$HOME/k8s-security-lab"
+REPO_DIR="$HOME/k3s-nwsec-lab"
 LOG="$HOME/install.log"
 
 log() { echo "[$(date '+%H:%M:%S')] $*" | tee -a "$LOG"; }
@@ -41,8 +41,17 @@ curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
 log "--- Installing MetalLB ---"
 kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.14.8/config/manifests/metallb-native.yaml
+
+# Wait for pods first
 kubectl wait --namespace metallb-system --for=condition=ready pod \
   --selector=app=metallb --timeout=90s
+
+# Wait for CRDs to be fully established (webhook needs time after pods are ready)
+log "Waiting for MetalLB CRDs to be established..."
+kubectl wait --for=condition=established crd/ipaddresspools.metallb.io --timeout=60s
+kubectl wait --for=condition=established crd/l2advertisements.metallb.io --timeout=60s
+sleep 5
+
 kubectl apply -f "$REPO_DIR/infrastructure/metallb/ip-pool.yaml"
 log "MetalLB pool: 172.20.20.21-172.20.20.40"
 
@@ -98,14 +107,39 @@ ISTIO_TYPE=$(kubectl get svc -n istio-system istio-ingressgateway -o jsonpath='{
 
 log "--- Week 3: Deploying sample application ---"
 
-log "Building Docker images..."
-cd "$REPO_DIR/sample-app/backend"
-docker build -t demo-backend:v1 .
-sudo k3s ctr images import <(docker save demo-backend:v1)
+log "Building images into k3s containerd (no Docker required)..."
 
-cd "$REPO_DIR/sample-app/frontend"
-docker build -t demo-frontend:v1 .
-sudo k3s ctr images import <(docker save demo-frontend:v1)
+# k3s bundles containerd — use nerdctl if available, otherwise buildah, otherwise error
+if command -v nerdctl &>/dev/null; then
+  log "Using nerdctl (k3s containerd CLI)"
+  sudo nerdctl build -t demo-backend:v1 "$REPO_DIR/sample-app/backend/"
+  sudo nerdctl build -t demo-frontend:v1 "$REPO_DIR/sample-app/frontend/"
+
+elif command -v buildah &>/dev/null; then
+  log "Using buildah"
+  buildah bud -t demo-backend:v1 "$REPO_DIR/sample-app/backend/"
+  buildah bud -t demo-frontend:v1 "$REPO_DIR/sample-app/frontend/"
+  # Export from buildah and import into k3s containerd
+  buildah push demo-backend:v1 oci-archive:/tmp/demo-backend.tar
+  buildah push demo-frontend:v1 oci-archive:/tmp/demo-frontend.tar
+  sudo k3s ctr images import /tmp/demo-backend.tar
+  sudo k3s ctr images import /tmp/demo-frontend.tar
+  rm -f /tmp/demo-backend.tar /tmp/demo-frontend.tar
+
+else
+  log "Neither nerdctl nor buildah found — installing nerdctl..."
+  NERDCTL_VERSION="1.7.6"
+  wget -q "https://github.com/containerd/nerdctl/releases/download/v${NERDCTL_VERSION}/nerdctl-${NERDCTL_VERSION}-linux-amd64.tar.gz" -O /tmp/nerdctl.tar.gz
+  sudo tar -xzf /tmp/nerdctl.tar.gz -C /usr/local/bin nerdctl
+  rm /tmp/nerdctl.tar.gz
+  sudo nerdctl build -t demo-backend:v1 "$REPO_DIR/sample-app/backend/"
+  sudo nerdctl build -t demo-frontend:v1 "$REPO_DIR/sample-app/frontend/"
+fi
+
+# Verify images are visible to k3s
+sudo k3s ctr images ls | grep -E "demo-backend|demo-frontend" \
+  && log "Images imported into k3s containerd successfully" \
+  || err "Images not found in k3s containerd — check build output above"
 cd ~
 
 kubectl apply -f "$REPO_DIR/sample-app/database.yaml"

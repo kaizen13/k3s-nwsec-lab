@@ -107,7 +107,7 @@ MONITORING (Direct LoadBalancer IPs — internal network only):
 ## Repository Structure
 
 ```
-k3s-nwsec-lab/
+k8s-security-lab/
 ├── README.md
 ├── infrastructure/
 │   ├── namespaces/          # Namespace definitions with security labels
@@ -146,7 +146,7 @@ k3s-nwsec-lab/
 ## Quick Start
 
 ### Prerequisites
-- Hypervisor VM: 12 vCPU / 24GB RAM / 80GB disk
+- Proxmox VM: 12 vCPU / 24GB RAM / 80GB disk
 - Ubuntu Server 24.04 LTS
 - Static IP: 172.20.20.5/26
 - Network access to 172.20.20.0/26 subnet
@@ -155,8 +155,8 @@ k3s-nwsec-lab/
 
 ```bash
 # Clone the repository
-git clone https://github.com/kaizen13/k3s-nwsec-lab.git
-cd k3s-nwsec-lab
+git clone https://github.com/YOUR_USERNAME/k8s-security-lab.git
+cd k8s-security-lab
 
 # Full automated install (Weeks 1–4)
 chmod +x scripts/install.sh
@@ -235,6 +235,18 @@ open https://172.20.20.22
 kubectl delete networkpolicy frontend-demo-policy -n frontend
 # 2. Watch ArgoCD detect drift and auto-restore within ~3 minutes
 ```
+
+---
+
+## Skills Demonstrated
+
+- Kubernetes cluster administration (k3s, Helm, kubectl)
+- Network security: WAF, mTLS, microsegmentation, zero-trust
+- Service mesh architecture with Istio
+- GitOps workflow with ArgoCD
+- Observability: Prometheus metrics, Grafana dashboards, Jaeger tracing, Kiali topology
+- Certificate lifecycle management (cert-manager)
+- Cloud-native translation of enterprise network security patterns
 
 ---
 

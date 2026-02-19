@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: demo-frontend:v1
+          image: docker.io/library/demo-frontend:v1
           imagePullPolicy: Never
           ports:
             - containerPort: 80
